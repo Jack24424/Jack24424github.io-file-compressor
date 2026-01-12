@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <script src="theme.js"></script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>File Compressor • Fast & Simple</title>
+  <link rel="stylesheet" href="style.css" />
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+</head>
+<body>
+
+
+<div class="container">
+  <h1>Compress Files</h1>
+  <p class="subtitle">Reduce file size quickly • Up to 5 files • Works offline</p>
+
+  <!-- Mode switch - same as on image page -->
+  <div class="mode-switch">
+    <p>Compressing:</p>
+    <div class="buttons">
+      <a href="compress.html" class="btn-outline">Images ←</a>
+      <button class="active">Other Files</button>
+    </div>
+  </div>
+
+  <div class="upload-area" id="uploadArea">
+    <input 
+      type="file" 
+      id="fileInput" 
+      multiple 
+      hidden
+    />
+    <div class="upload-content">
+      <div class="upload-icon">📦</div>
+      <h3>Click or drag & drop files here</h3>
+      <p>PDF • DOCX • ZIP • TXT • MP3 • and many more</p>
+      <p class="multi-hint">
+        <strong>Tip:</strong> Hold <kbd>Ctrl</kbd> (Win/Linux) or <kbd>Cmd</kbd> (Mac) to select multiple<br>
+        <span class="limit-warning">Maximum 5 files allowed</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <p id="fileCounter">0 / 5 files selected</p>
+    <button type="button" id="clearAllBtn" style="display:none;">Clear All</button>
+  </div>
+
+  <!-- Changed from preview-grid to file-list (most files don't have thumbnails) -->
+  <div id="fileList" class="file-list"></div>
+
+  <div class="quality-section">
+    <h3>Compression Level</h3>
+    <div class="quality-options">
+      <label class="quality-label low">
+        <input type="radio" name="quality" value="low" checked />
+        <span>Low</span>
+        <small>Best compression • Smallest size</small>
+      </label>
+      <label class="quality-label medium">
+        <input type="radio" name="quality" value="medium" />
+        <span>Medium</span>
+        <small>Good balance • Recommended</small>
+      </label>
+      <label class="quality-label high">
+        <input type="radio" name="quality" value="high" />
+        <span>High</span>
+        <small>Minimal compression • Best quality</small>
+      </label>
+    </div>
+  </div>
+
+  <button type="button" id="compressBtn" disabled>Compress Selected Files</button>
+
+  <div id="loading" class="loading" style="display:none;">
+    <div class="spinner"></div>
+    <p>Compressing files...</p>
+  </div>
+
+  <div id="downloadContainer" class="download-area"></div>
+</div>
+
+<script src="script-files.js"></script>
+</body>
+</html>

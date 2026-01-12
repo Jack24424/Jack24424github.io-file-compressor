@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <script src="theme.js"></script>
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Image Compressor • Fast & Simple</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+ 
+<div class="container">
+  <h1>Compress Images</h1>
+  <p class="subtitle">Reduce file size quickly • Up to 5 images • Works offline</p>
+
+<!-- Example: right after <p class="subtitle">...</p> -->
+<div class="mode-switch">
+  <p>Compressing:</p>
+  <div class="buttons">
+    <button class="active">Images</button>
+    <a href="compressor-files.html" class="btn-outline">Other Files →</a>
+  </div>
+</div>
+
+  <div class="upload-area" id="uploadArea">
+    <input 
+      type="file" 
+      id="fileInput" 
+      accept="image/jpeg,image/png,image/webp,image/gif" 
+      multiple 
+      hidden
+    />
+    <div class="upload-content">
+      <div class="upload-icon">📸</div>
+      <h3>Click or drag & drop images here</h3>
+      <p>JPG • PNG • WEBP • GIF</p>
+      <p class="multi-hint">
+        <strong>Tip:</strong> Hold <kbd>Ctrl</kbd> (Win/Linux) or <kbd>Cmd</kbd> (Mac) to select multiple<br>
+        <span class="limit-warning">Maximum 5 images allowed</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <p id="imageCounter">0 / 5 images selected</p>
+    <button type="button" id="clearAllBtn" style="display:none;">Clear All</button>
+  </div>
+
+  <div id="previewContainer" class="preview-grid"></div>
+
+  <div class="quality-section">
+    <h3>Compression Level</h3>
+    <div class="quality-options">
+      <label class="quality-label low">
+        <input type="radio" name="quality" value="low" checked />
+        <span>Low</span>
+        <small>~30% • Smallest size</small>
+      </label>
+      <label class="quality-label medium">
+        <input type="radio" name="quality" value="medium" />
+        <span>Medium</span>
+        <small>~60% • Good balance</small>
+      </label>
+      <label class="quality-label high">
+        <input type="radio" name="quality" value="high" />
+        <span>High</span>
+        <small>~88% • Best quality</small>
+      </label>
+    </div>
+  </div>
+
+  <button type="button" id="compressBtn" disabled>Compress Selected Images</button>
+
+  <div id="loading" class="loading" style="display:none;">
+    <div class="spinner"></div>
+    <p>Compressing images...</p>
+  </div>
+
+  <div id="downloadContainer" class="download-area"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
