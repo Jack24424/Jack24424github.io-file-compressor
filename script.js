@@ -9,91 +9,98 @@ function formatFileSize(bytes) {
 
 const MAX_FILES = 5;
 
-// ==================== DOM ====================
-const fileInput = document.getElementById('fileInput');
-const uploadArea = document.getElementById('uploadArea');
-const previewContainer = document.getElementById('previewContainer');
-const imageCounter = document.getElementById('imageCounter');
-const compressBtn = document.getElementById('compressBtn');
-const loading = document.getElementById('loading');
-const downloadContainer = document.getElementById('downloadContainer');
-const clearAllBtn = document.getElementById('clearAllBtn');
+// ==================== DOM ELEMENTS ====================
+let fileInput, uploadArea, previewContainer, imageCounter, compressBtn, loading, downloadContainer, clearAllBtn;
 
-// ==================== PERSISTENCE (localStorage) ====================
-const STORAGE_KEY = 'imageCompressorFiles';
+let selectedFiles = [];
 
-function saveFilesToStorage(files) {
-  const data = files.map(file => ({
-    name: file.name,
-    type: file.type,
-    size: file.size,
-    lastModified: file.lastModified,
-    // We can't store File object → we'll recreate preview only
-  }));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  // Get all elements
+  fileInput = document.getElementById('fileInput');
+  uploadArea = document.getElementById('uploadArea');
+  previewContainer = document.getElementById('previewContainer');
+  imageCounter = document.getElementById('imageCounter');
+  compressBtn = document.getElementById('compressBtn');
+  loading = document.getElementById('loading');
+  downloadContainer = document.getElementById('downloadContainer');
+  clearAllBtn = document.getElementById('clearAllBtn');
 
-function loadFilesFromStorage() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return [];
-  try {
-    return JSON.parse(saved);
-  } catch {
-    return [];
-  }
-}
-
-// ==================== DRAG & DROP ====================
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(name => {
-  uploadArea.addEventListener(name, e => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (['dragenter', 'dragover'].includes(name)) {
-      uploadArea.classList.add('dragover');
-    } else {
-      uploadArea.classList.remove('dragover');
-    }
-  }, false);
-});
-
-uploadArea.addEventListener('drop', e => {
-  const dt = e.dataTransfer;
-  handleNewFiles(dt.files);
-});
-
-uploadArea.addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', () => {
-  handleNewFiles(fileInput.files);
-});
-
-function handleNewFiles(newFiles) {
-  const currentCount = selectedFiles.length;
-  const availableSlots = MAX_FILES - currentCount;
-  
-  if (availableSlots <= 0) {
-    alert(`You already have ${MAX_FILES} images. Remove some first!`);
+  // If any element is missing → log error
+  if (!fileInput || !uploadArea || !compressBtn) {
+    console.error('Some required DOM elements are missing!');
     return;
   }
 
-  const filesArray = Array.from(newFiles || [])
-    .filter(f => f.type.startsWith('image/'))
-    .slice(0, availableSlots);
+  initEventListeners();
+  loadFromStorage(); // optional persistence reminder
+});
 
-  if (filesArray.length === 0) return;
+// ==================== EVENT LISTENERS ====================
+function initEventListeners() {
+  // Drag & Drop
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    uploadArea.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (['dragenter', 'dragover'].includes(eventName)) {
+        uploadArea.classList.add('dragover');
+      } else {
+        uploadArea.classList.remove('dragover');
+      }
+    }, false);
+  });
 
-  selectedFiles = [...selectedFiles, ...filesArray];
-  
-  renderPreviews();
-  updateCounter();
-  compressBtn.disabled = selectedFiles.length === 0;
-  clearAllBtn.style.display = selectedFiles.length > 0 ? 'inline-block' : 'none';
+  uploadArea.addEventListener('drop', e => {
+    handleNewFiles(e.dataTransfer.files);
+  });
 
-  saveFilesToStorage(selectedFiles); // only metadata
+  // Click to open file dialog
+  uploadArea.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    handleNewFiles(fileInput.files);
+  });
+
+  // Remove single file
+  previewContainer.addEventListener('click', e => {
+    if (e.target.classList.contains('remove-btn')) {
+      const index = parseInt(e.target.dataset.index);
+      if (!isNaN(index)) {
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+        updateUI();
+      }
+    }
+  });
+
+  // Clear all
+  clearAllBtn?.addEventListener('click', () => {
+    if (confirm('Remove all selected images?')) {
+      selectedFiles = [];
+      previewContainer.innerHTML = '';
+      downloadContainer.innerHTML = '';
+      updateUI();
+      localStorage.removeItem('imageCompressorFiles');
+    }
+  });
+
+  // Compress button
+  compressBtn.addEventListener('click', handleCompression);
 }
 
-// ==================== RENDER PREVIEWS ====================
-let selectedFiles = [];
+// ==================== FILE HANDLING ====================
+function handleNewFiles(newFiles) {
+  const files = Array.from(newFiles || [])
+    .filter(f => f.type.startsWith('image/'))
+    .slice(0, MAX_FILES - selectedFiles.length);
+
+  if (files.length === 0) return;
+
+  selectedFiles = [...selectedFiles, ...files];
+  renderPreviews();
+  updateUI();
+}
 
 function renderPreviews() {
   previewContainer.innerHTML = '';
@@ -103,177 +110,118 @@ function renderPreviews() {
     reader.onload = e => {
       const item = document.createElement('div');
       item.className = 'preview-item';
-      item.dataset.index = index;
-
       item.innerHTML = `
-        <button class="remove-btn" type="button" data-index="${index}">×</button>
+        <button class="remove-btn" data-index="${index}">×</button>
         <img src="${e.target.result}" alt="${file.name}">
         <div class="size-info">
-          <span class="original">Original: ${formatFileSize(file.size)}</span><br>
-          <span class="compressed" id="comp-size-${index}">Compressed: —</span>
+          <div class="original">Original: ${formatFileSize(file.size)}</div>
+          <div class="compressed" id="comp-size-${index}">Compressed: —</div>
         </div>
       `;
-
       previewContainer.appendChild(item);
     };
     reader.readAsDataURL(file);
   });
 }
 
-// Remove single file
-previewContainer.addEventListener('click', e => {
-  if (e.target.classList.contains('remove-btn')) {
-    const index = parseInt(e.target.dataset.index);
-    if (!isNaN(index)) {
-      selectedFiles.splice(index, 1);
-      renderPreviews();
-      updateCounter();
-      compressBtn.disabled = selectedFiles.length === 0;
-      clearAllBtn.style.display = selectedFiles.length > 0 ? 'inline-block' : 'none';
-      saveFilesToStorage(selectedFiles);
-    }
-  }
-});
+// ==================== COMPRESSION ====================
+async function compressImage(file, quality) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.getContext('2d').drawImage(img, 0, 0);
 
-// Clear all
-clearAllBtn.addEventListener('click', () => {
-  if (confirm('Remove all selected images?')) {
-    selectedFiles = [];
-    previewContainer.innerHTML = '';
-    downloadContainer.innerHTML = '';
-    updateCounter();
-    compressBtn.disabled = true;
-    clearAllBtn.style.display = 'none';
-    localStorage.removeItem(STORAGE_KEY);
-  }
-});
+        const q = quality === 'low' ? 0.3 : quality === 'medium' ? 0.6 : 0.88;
 
-function updateCounter() {
-  imageCounter.textContent = `${selectedFiles.length} / ${MAX_FILES} images selected`;
+        canvas.toBlob(blob => {
+          resolve({ blob, size: blob?.size || 0 });
+        }, 'image/jpeg', q);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
-// ==================== LOAD ON PAGE START ====================
-window.addEventListener('load', () => {
-  const saved = loadFilesFromStorage();
-  if (saved.length > 0) {
-    alert('Previous files loaded from last session!');
-    // Note: We can't restore actual File objects → user needs to re-select
-    // But we can show names/sizes as reminder
-    selectedFiles = []; // reset real files
-    previewContainer.innerHTML = '<p style="color:#e67e22; text-align:center; padding:20px;">Previous selection remembered (re-select files to continue)</p>';
-    
-    saved.forEach((meta, i) => {
-      const div = document.createElement('div');
-      div.style.padding = '10px';
-      div.style.border = '1px dashed #bdc3c7';
-      div.style.margin = '8px';
-      div.innerHTML = `<strong>${meta.name}</strong><br>${formatFileSize(meta.size)}`;
-      previewContainer.appendChild(div);
-    });
-    
-    selectedFiles = []; // force re-upload
-    updateCounter();
-  }
-});
+async function handleCompression() {
+  if (selectedFiles.length === 0) return;
 
-// ==================== COMPRESSION (same as before, just update counter at end) ====================
-// ... keep your existing compressImage + compressBtn listener ...
-
-compressBtn.addEventListener('click', async () => {
-  // ... your compression code ...
-
-  // At the very end:
-  loading.style.display = 'none';
-  compressBtn.disabled = false;
-  imageCounter.textContent = `${selectedFiles.length} images compressed! Ready for new batch.`;
-  // Optional: localStorage.removeItem(STORAGE_KEY); // clear after success
-});
-
-
-
-(function(){
-  function prevent(e){
-    e.preventDefault();
-    e.stopPropagation();
-    return false;
+  const quality = document.querySelector('input[name="quality"]:checked')?.value;
+  if (!quality) {
+    alert('Please select compression quality');
+    return;
   }
 
-  // Add CSS to disable text selection globally
-  try{
-    var style = document.createElement('style');
-    style.type = 'text/css';
-    style.appendChild(document.createTextNode('*{ -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none !important; }'));
-    document.head && document.head.appendChild(style);
-  }catch(e){/* ignore */}
+  loading.style.display = 'block';
+  compressBtn.disabled = true;
+  downloadContainer.innerHTML = '';
 
-  // Block copy/cut/paste, context menu, selectstart and dragstart
-  ['copy','cut','paste','contextmenu','selectstart','dragstart'].forEach(function(evt){
-    document.addEventListener(evt, prevent, true);
-  });
+  try {
+    for (let i = 0; i < selectedFiles.length; i++) {
+      imageCounter.textContent = `Compressing ${i + 1}/${selectedFiles.length}...`;
 
-  // Block common keyboard shortcuts (Ctrl/Cmd + C/X/A/S, F12, Ctrl+U, Ctrl+Shift+I)
-  document.addEventListener('keydown', function(e){
-    var key = (e.key || '').toLowerCase();
-    if((e.ctrlKey || e.metaKey) && (key === 'c' || key === 'x' || key === 'a' || key === 's')){
-      prevent(e);
-      return false;
-    }
-    if(e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && (key === 'i'))){
-      prevent(e);
-      return false;
-    }
-    if((e.ctrlKey || e.metaKey) && key === 'u'){
-      prevent(e);
-      return false;
-    }
-  }, true);
+      const { blob, size: compressedSize } = await compressImage(selectedFiles[i], quality);
+      const originalSize = selectedFiles[i].size;
+      const savings = originalSize > 0 ? Math.round((1 - compressedSize / originalSize) * 100) : 0;
 
-  // Allow selection and normal behavior inside inputs, textareas and contenteditable elements
-  function allowInputs(root){
-    if(!root || !root.querySelectorAll) return;
-    var nodes = root.querySelectorAll('input, textarea, [contenteditable]');
-    for(var i=0;i<nodes.length;i++){
-      nodes[i].style.userSelect = 'text';
-      nodes[i].style.webkitUserSelect = 'text';
-      nodes[i].style.MozUserSelect = 'text';
-      nodes[i].addEventListener('selectstart', function(e){ e.stopPropagation(); }, true);
+      // Update preview
+      const sizeEl = document.getElementById(`comp-size-${i}`);
+      if (sizeEl) {
+        sizeEl.innerHTML = `Compressed: ${formatFileSize(compressedSize)} <span class="savings">(-${savings}%)</span>`;
+      }
+
+      // Download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `compressed_${selectedFiles[i].name.replace(/\.[^/.]+$/, ".jpg")}`;
+      link.textContent = `↓ ${selectedFiles[i].name} (${formatFileSize(compressedSize)})`;
+      link.style.display = 'block';
+      link.style.margin = '12px 0';
+      downloadContainer.appendChild(link);
+    }
+
+    imageCounter.textContent = `${selectedFiles.length} images compressed successfully!`;
+  } catch (err) {
+    console.error('Compression failed:', err);
+    alert('Compression failed. Please try again.');
+  } finally {
+    loading.style.display = 'none';
+    compressBtn.disabled = false;
+  }
+}
+
+// ==================== UI UPDATE ====================
+function updateUI() {
+  const count = selectedFiles.length;
+  imageCounter.textContent = `${count} / ${MAX_FILES} images selected`;
+  compressBtn.disabled = count === 0;
+  clearAllBtn.style.display = count > 0 ? 'inline-block' : 'none';
+}
+
+// ==================== STORAGE REMINDER ====================
+function loadFromStorage() {
+  const saved = localStorage.getItem('imageCompressorFiles');
+  if (saved) {
+    try {
+      const data = JSON.parse(saved);
+      if (data.length > 0) {
+        previewContainer.innerHTML = '<p style="text-align:center; color:#e67e22; padding:20px;">Previous selection remembered (re-select files to compress again)</p>';
+        data.forEach(f => {
+          const div = document.createElement('div');
+          div.style.padding = '10px';
+          div.style.border = '1px dashed #ccc';
+          div.innerHTML = `<strong>${f.name}</strong><br>${formatFileSize(f.size)}`;
+          previewContainer.appendChild(div);
+        });
+      }
+    } catch (e) {
+      console.warn('Invalid saved data');
     }
   }
-
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', function(){ allowInputs(document); });
-  }else{
-    allowInputs(document);
-  }
-
-})();
-
-
-
-
-
-
-
-
-
-document.addEventListener('DOMContentLoaded', () => {
-  const themeBtn = document.getElementById('themeToggle');
-  const html = document.documentElement;
-
-  // Check saved preference
-  if (localStorage.getItem('theme') === 'dark' || 
-      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    html.classList.add('dark-mode');
-  }
-
-  themeBtn.addEventListener('click', () => {
-    html.classList.toggle('dark-mode');
-    
-    // Save preference
-    if (html.classList.contains('dark-mode')) {
-      localStorage.setItem('theme', 'dark');
-    } else {
-      localStorage.setItem('theme', 'light');
-    }
-  });
-});
+}
