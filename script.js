@@ -1,4 +1,4 @@
-// ==================== HELPERS ====================
+// Your helper functions stay the same
 function formatFileSize(bytes) {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -8,220 +8,111 @@ function formatFileSize(bytes) {
 }
 
 const MAX_FILES = 5;
-
-// ==================== DOM ELEMENTS ====================
-let fileInput, uploadArea, previewContainer, imageCounter, compressBtn, loading, downloadContainer, clearAllBtn;
-
 let selectedFiles = [];
 
-// ==================== INIT ====================
+// ── ALL MAIN LOGIC INSIDE DOMContentLoaded ──
 document.addEventListener('DOMContentLoaded', () => {
-  // Get all elements
-  fileInput = document.getElementById('fileInput');
-  uploadArea = document.getElementById('uploadArea');
-  previewContainer = document.getElementById('previewContainer');
-  imageCounter = document.getElementById('imageCounter');
-  compressBtn = document.getElementById('compressBtn');
-  loading = document.getElementById('loading');
-  downloadContainer = document.getElementById('downloadContainer');
-  clearAllBtn = document.getElementById('clearAllBtn');
+  // Get elements safely
+  const fileInput = document.getElementById('fileInput');
+  const uploadArea = document.getElementById('uploadArea');
+  const previewContainer = document.getElementById('previewContainer');
+  const imageCounter = document.getElementById('imageCounter');
+  const compressBtn = document.getElementById('compressBtn');
+  const loading = document.getElementById('loading');
+  const downloadContainer = document.getElementById('downloadContainer');
+  const clearAllBtn = document.getElementById('clearAllBtn');
 
-  // If any element is missing → log error
+  // Safety check
   if (!fileInput || !uploadArea || !compressBtn) {
-    console.error('Some required DOM elements are missing!');
+    console.error('Critical elements missing! Check your HTML IDs.');
     return;
   }
 
-  initEventListeners();
-  loadFromStorage(); // optional persistence reminder
-});
-
-// ==================== EVENT LISTENERS ====================
-function initEventListeners() {
-  // Drag & Drop
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    uploadArea.addEventListener(eventName, e => {
+  // ── Your event listeners and functions here ──
+  // Drag & drop
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(name => {
+    uploadArea.addEventListener(name, e => {
       e.preventDefault();
       e.stopPropagation();
-      if (['dragenter', 'dragover'].includes(eventName)) {
+      if (['dragenter', 'dragover'].includes(name)) {
         uploadArea.classList.add('dragover');
       } else {
         uploadArea.classList.remove('dragover');
       }
-    }, false);
+    });
   });
 
   uploadArea.addEventListener('drop', e => {
     handleNewFiles(e.dataTransfer.files);
   });
 
-  // Click to open file dialog
   uploadArea.addEventListener('click', () => fileInput.click());
 
   fileInput.addEventListener('change', () => {
     handleNewFiles(fileInput.files);
   });
 
-  // Remove single file
-  previewContainer.addEventListener('click', e => {
-    if (e.target.classList.contains('remove-btn')) {
-      const index = parseInt(e.target.dataset.index);
-      if (!isNaN(index)) {
-        selectedFiles.splice(index, 1);
-        renderPreviews();
-        updateUI();
-      }
-    }
-  });
+  // ... rest of your code: handleNewFiles, renderPreviews, remove, clearAll, updateUI ...
 
-  // Clear all
-  clearAllBtn?.addEventListener('click', () => {
-    if (confirm('Remove all selected images?')) {
-      selectedFiles = [];
-      previewContainer.innerHTML = '';
-      downloadContainer.innerHTML = '';
-      updateUI();
-      localStorage.removeItem('imageCompressorFiles');
-    }
-  });
+  // Compression function
+  async function compressImage(file, quality) {
+    return new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          canvas.getContext('2d').drawImage(img, 0, 0);
+
+          const q = quality === 'low' ? 0.3 : quality === 'medium' ? 0.6 : 0.88;
+
+          canvas.toBlob(blob => {
+            resolve({ blob, size: blob?.size || 0 });
+          }, 'image/jpeg', q);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
 
   // Compress button
-  compressBtn.addEventListener('click', handleCompression);
-}
+  compressBtn.addEventListener('click', async () => {
+    if (selectedFiles.length === 0) return;
 
-// ==================== FILE HANDLING ====================
-function handleNewFiles(newFiles) {
-  const files = Array.from(newFiles || [])
-    .filter(f => f.type.startsWith('image/'))
-    .slice(0, MAX_FILES - selectedFiles.length);
-
-  if (files.length === 0) return;
-
-  selectedFiles = [...selectedFiles, ...files];
-  renderPreviews();
-  updateUI();
-}
-
-function renderPreviews() {
-  previewContainer.innerHTML = '';
-
-  selectedFiles.forEach((file, index) => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const item = document.createElement('div');
-      item.className = 'preview-item';
-      item.innerHTML = `
-        <button class="remove-btn" data-index="${index}">×</button>
-        <img src="${e.target.result}" alt="${file.name}">
-        <div class="size-info">
-          <div class="original">Original: ${formatFileSize(file.size)}</div>
-          <div class="compressed" id="comp-size-${index}">Compressed: —</div>
-        </div>
-      `;
-      previewContainer.appendChild(item);
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-// ==================== COMPRESSION ====================
-async function compressImage(file, quality) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        canvas.getContext('2d').drawImage(img, 0, 0);
-
-        const q = quality === 'low' ? 0.3 : quality === 'medium' ? 0.6 : 0.88;
-
-        canvas.toBlob(blob => {
-          resolve({ blob, size: blob?.size || 0 });
-        }, 'image/jpeg', q);
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handleCompression() {
-  if (selectedFiles.length === 0) return;
-
-  const quality = document.querySelector('input[name="quality"]:checked')?.value;
-  if (!quality) {
-    alert('Please select compression quality');
-    return;
-  }
-
-  loading.style.display = 'block';
-  compressBtn.disabled = true;
-  downloadContainer.innerHTML = '';
-
-  try {
-    for (let i = 0; i < selectedFiles.length; i++) {
-      imageCounter.textContent = `Compressing ${i + 1}/${selectedFiles.length}...`;
-
-      const { blob, size: compressedSize } = await compressImage(selectedFiles[i], quality);
-      const originalSize = selectedFiles[i].size;
-      const savings = originalSize > 0 ? Math.round((1 - compressedSize / originalSize) * 100) : 0;
-
-      // Update preview
-      const sizeEl = document.getElementById(`comp-size-${i}`);
-      if (sizeEl) {
-        sizeEl.innerHTML = `Compressed: ${formatFileSize(compressedSize)} <span class="savings">(-${savings}%)</span>`;
-      }
-
-      // Download link
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `compressed_${selectedFiles[i].name.replace(/\.[^/.]+$/, ".jpg")}`;
-      link.textContent = `↓ ${selectedFiles[i].name} (${formatFileSize(compressedSize)})`;
-      link.style.display = 'block';
-      link.style.margin = '12px 0';
-      downloadContainer.appendChild(link);
+    const quality = document.querySelector('input[name="quality"]:checked')?.value;
+    if (!quality) {
+      alert('Please select quality');
+      return;
     }
 
-    imageCounter.textContent = `${selectedFiles.length} images compressed successfully!`;
-  } catch (err) {
-    console.error('Compression failed:', err);
-    alert('Compression failed. Please try again.');
-  } finally {
-    loading.style.display = 'none';
-    compressBtn.disabled = false;
-  }
-}
+    loading.style.display = 'block';
+    compressBtn.disabled = true;
 
-// ==================== UI UPDATE ====================
-function updateUI() {
-  const count = selectedFiles.length;
-  imageCounter.textContent = `${count} / ${MAX_FILES} images selected`;
-  compressBtn.disabled = count === 0;
-  clearAllBtn.style.display = count > 0 ? 'inline-block' : 'none';
-}
-
-// ==================== STORAGE REMINDER ====================
-function loadFromStorage() {
-  const saved = localStorage.getItem('imageCompressorFiles');
-  if (saved) {
     try {
-      const data = JSON.parse(saved);
-      if (data.length > 0) {
-        previewContainer.innerHTML = '<p style="text-align:center; color:#e67e22; padding:20px;">Previous selection remembered (re-select files to compress again)</p>';
-        data.forEach(f => {
-          const div = document.createElement('div');
-          div.style.padding = '10px';
-          div.style.border = '1px dashed #ccc';
-          div.innerHTML = `<strong>${f.name}</strong><br>${formatFileSize(f.size)}`;
-          previewContainer.appendChild(div);
-        });
+      for (let i = 0; i < selectedFiles.length; i++) {
+        imageCounter.textContent = `Compressing ${i + 1}/${selectedFiles.length}...`;
+
+        const { blob, size } = await compressImage(selectedFiles[i], quality);
+
+        // Create download
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `compressed_${selectedFiles[i].name}`;
+        link.textContent = `Download ${selectedFiles[i].name}`;
+        downloadContainer.appendChild(link);
       }
-    } catch (e) {
-      console.warn('Invalid saved data');
+      imageCounter.textContent = 'Done!';
+    } catch (err) {
+      console.error(err);
+      alert('Error during compression');
+    } finally {
+      loading.style.display = 'none';
+      compressBtn.disabled = false;
     }
-  }
-}
+  });
+
+  // ... add your other functions: handleNewFiles, renderPreviews, updateUI, etc.
+});
