@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-  <script src="theme.js"></script>
-
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Free File Tools — simple, fast and completely free online tools for everyday file tasks like image compression." />
   <title>Free File Tools</title>
+
+  <!-- favicon (replace with your file) -->
+  <link rel="icon" href="favicon.ico" />
+
   <link rel="stylesheet" href="style.css" />
+  <!-- Load theme script without blocking render -->
+  <script src="theme.js" defer></script>
 </head>
 <body>
- 
-
-  <div class="hero">
+  <main class="hero" role="main">
     <div class="container">
       <h1>Free File Tools</h1>
       <p class="lead">Simple, fast and completely free online tools for everyday file tasks</p>
@@ -27,17 +29,20 @@
         <div class="choice-card coming-soon">
           <h2>Convert Files</h2>
           <p>Convert between different file formats (coming soon)</p>
-          <button class="btn disabled" disabled>Coming Soon</button>
+          <button class="btn disabled" disabled aria-disabled="true">Coming Soon</button>
         </div>
       </div>
 
       <p class="question">What do you want to do?</p>
     </div>
-  </div>
+  </main>
 
   <footer>
-    <p>© 2026 Free File Tools • Made with ❤️ in Tolmin</p>
+    <p>&copy; 2026 Free File Tools • Made with ❤️ in Tolmin</p>
   </footer>
 
+  <noscript>
+    <div class="noscript-warning">This site works best with JavaScript enabled.</div>
+  </noscript>
 </body>
 </html>
